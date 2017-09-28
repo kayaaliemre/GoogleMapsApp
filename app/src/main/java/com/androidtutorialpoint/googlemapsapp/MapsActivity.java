@@ -1,0 +1,289 @@
+package com.androidtutorialpoint.googlemapsapp;
+
+import android.Manifest;
+import android.app.ProgressDialog;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AppCompatActivity;
+import android.view.View;
+import android.widget.Button;
+import android.widget.Toast;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback,
+        GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener,
+        LocationListener {
+    ProgressDialog pDialog;
+    GoogleMap mMap;
+    GoogleApiClient mGoogleApiClient;
+    Location mLastLocation;
+    Marker mCurrLocationMarker;
+    LocationRequest mLocationRequest;
+    private static String URL = "http://www.hastanebul.com.tr/eskisehir-nobetci-eczaneler";
+    HashMap<String, String> map;
+    List title = new ArrayList();
+    List locationx = new ArrayList();
+    List locationy = new ArrayList();
+    ArrayList<HashMap<String, String>> locations = new ArrayList<>();
+    private Double Latitude = 0.00;
+    private Double Longitude = 0.00;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        //checkLocationPharmacy();
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_maps);
+
+        Button button = (Button) findViewById(R.id.button);
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                new FetchWebsiteData().execute();
+            }
+        });
+
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            checkLocationPermission();
+        }
+        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+
+        mapFragment.getMapAsync(this);
+    }
+
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        mMap = googleMap;
+        mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+
+        //Initialize Google Play Services
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED) {
+                buildGoogleApiClient();
+                mMap.setMyLocationEnabled(true);
+            }
+        } else {
+            buildGoogleApiClient();
+            mMap.setMyLocationEnabled(true);
+        }
+    }
+
+    protected synchronized void buildGoogleApiClient() {
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(LocationServices.API)
+                .build();
+        mGoogleApiClient.connect();
+    }
+
+    @Override
+    public void onConnected(Bundle bundle) {
+        mLocationRequest = new LocationRequest();
+        mLocationRequest.setInterval(1000);
+        mLocationRequest.setFastestInterval(1000);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+        }
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        mLastLocation = location;
+        if (mCurrLocationMarker != null) {
+            mCurrLocationMarker.remove();
+        }
+        map = new HashMap<String, String>();
+        map.put("LocationID", "0");
+        map.put("Latitude", Double.toString(location.getLatitude()));
+        map.put("Longitude", Double.toString(location.getLongitude()));
+        map.put("LocationName", "Current Position");
+
+        locations.add(map);
+
+        Latitude = Double.parseDouble(locations.get(0).get("Latitude"));
+        Longitude = Double.parseDouble(locations.get(0).get("Longitude"));
+        LatLng coordinate = new LatLng(Latitude, Longitude);
+        mMap.setMapType(com.google.android.gms.maps.GoogleMap.MAP_TYPE_HYBRID);
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(coordinate, 12));
+        if (mGoogleApiClient != null) {
+            LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
+        }
+    }
+
+    public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
+
+    public boolean checkLocationPermission() {
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            // Asking user if explanation is needed
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.ACCESS_FINE_LOCATION)) {
+
+                // Show an explanation to the user *asynchronously* -- don't block
+                // this thread waiting for the user's response! After the user
+                // sees the explanation, try again to request the permission.
+
+                //Prompt the user once explanation has been shown
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                        MY_PERMISSIONS_REQUEST_LOCATION);
+
+
+            } else {
+                // No explanation needed, we can request the permission.
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                        MY_PERMISSIONS_REQUEST_LOCATION);
+            }
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_LOCATION: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    // permission was granted. Do the
+                    // contacts-related task you need to do.
+                    if (ContextCompat.checkSelfPermission(this,
+                            Manifest.permission.ACCESS_FINE_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED) {
+
+                        if (mGoogleApiClient == null) {
+                            buildGoogleApiClient();
+                        }
+                        mMap.setMyLocationEnabled(true);
+                    }
+
+                } else {
+
+                    // Permission denied, Disable the functionality that depends on this permission.
+                    Toast.makeText(this, "permission denied", Toast.LENGTH_LONG).show();
+                }
+                return;
+            }
+        }
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
+    }
+
+    public class FetchWebsiteData extends AsyncTask<Object, Object, ArrayList<HashMap<String, String>>> {
+
+
+        protected void onPreExecute() {
+            pDialog = new ProgressDialog(MapsActivity.this);
+            pDialog.setMessage("Yükleniyor...");
+            pDialog.setIndeterminate(true);
+            pDialog.setCancelable(false);
+            pDialog.show();
+        }
+
+        @Override
+        protected ArrayList<HashMap<String, String>> doInBackground(Object... params) {
+            try {
+                Document doc = Jsoup.connect(URL).get();    // connection for website
+                Elements elements = doc.select("div.container").select("div.row").select("div.col-lg-4").select("div.panel.panel-default").select("div.panel-body.pharmacyonduty").select("a");
+                map = new HashMap<String, String>();
+                map.put("LocationID", "0");
+                map.put("Latitude", Double.toString(0));
+                map.put("Longitude", Double.toString(0));
+                map.put("LocationName", "Current Position");
+
+                locations.add(map);
+
+                for (Element t : elements) {
+                    title.add(t.attr("data-title"));
+                }
+                for (Element t : elements) {
+                    locationx.add(t.attr("data-locationy"));
+                }
+                for (Element t : elements) {
+                    locationy.add(t.attr("data-locationx"));
+                }
+                for (int i = 0; i < title.size(); i++) {
+                    map = new HashMap<String, String>();
+                    map.put("LocationID", String.valueOf(i + 1));
+                    map.put("Latitude", String.valueOf(locationx.get(i)));
+                    map.put("Longitude", String.valueOf(locationy.get(i)));
+                    map.put("LocationName", String.valueOf(title.get(i)));
+                    locations.add(map);
+                }
+                return locations;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        protected void onPostExecute(ArrayList<HashMap<String, String>> unused) { //Posttan sonra
+            for (int i = 0; i < locations.size(); i++) {
+                Latitude = Double.parseDouble(locations.get(i).get("Latitude"));
+                Longitude = Double.parseDouble(locations.get(i).get("Longitude"));
+                String name = locations.get(i).get("LocationName");
+                //MarkerOptions marker = new MarkerOptions().position(new LatLng(Latitude, Longitude)).title(name);
+                //marker.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA));
+                //mMap.addMarker(marker);
+                LatLng latLng = new LatLng(Latitude, Longitude);
+                mMap.addMarker(new MarkerOptions()
+                        .position(latLng)
+                        .title(name));
+            }
+            pDialog.dismiss();  //ProgresDialog u kapatiyoruz.
+        }
+    }
+
+}

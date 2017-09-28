@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "952502894543",
+    "project_id": "default-demo-app-3a4c1"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:952502894543:android:27d689d63f1b7a06",
+        "android_client_info": {
+          "package_name": "com.androidtutorialpoint.googlemapsapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "952502894543-314po2rpbvf66dm27rkumu7poebpd2ea.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.androidtutorialpoint.googlemapsapp",
+            "certificate_hash": "3e1ce4e0b5e530c3b1714458321e02dd06bee78e"
+          }
+        },
+        {
+          "client_id": "952502894543-ojv1gt1oinm65r5fphgutudhimics9sd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKfXt4E_3kA2xA-Pt9Fb6DhAdd2HUFfIE"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 1
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
